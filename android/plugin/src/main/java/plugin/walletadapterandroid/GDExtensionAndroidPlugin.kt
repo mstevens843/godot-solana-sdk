@@ -117,7 +117,18 @@ class GDExtensionAndroidPlugin(godot: Godot): GodotPlugin(godot) {
     }
 
     @UsedByGodot
+    fun setIdentity(cluster: Int, uri: String, icon: String, name: String) {
+        myConnectCluster = cluster
+        myIdentityUri = Uri.parse(uri)
+        myIconUri = Uri.parse(icon)
+        myIdentityName = name
+        Log.i("godot", "[KotlinPlugin] setIdentity | cluster=$cluster uri=$uri icon=$icon name=$name")
+    }
+
+    @UsedByGodot
     fun clearState() {
+        Log.i("godot", "[KotlinPlugin] clearState | clearing myResult (was ${myResult?.javaClass?.simpleName}) — keeping myConnectedKey/authToken for signing")
+        myResult = null
         myMessageSigningStatus = 0
     }
 }

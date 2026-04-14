@@ -100,6 +100,7 @@ fun signTransaction(sender: ActivityResultSender) {
 
         when (result) {
             is TransactionResult.Success -> {
+                authToken = result.authResult.authToken
                 val signedTxBytes = result.successPayload?.signedPayloads?.first()
                 signedTxBytes?.let {
                     myMessageSignature = signedTxBytes
@@ -158,6 +159,7 @@ fun signTextMessage(sender: ActivityResultSender) {
 
         when (result) {
             is TransactionResult.Success -> {
+                authToken = result.authResult.authToken
                 val signedMessageBytes = result.successPayload?.messages?.first()?.signatures?.first()
                 signedMessageBytes?.let {
                     myMessageSignature = signedMessageBytes
