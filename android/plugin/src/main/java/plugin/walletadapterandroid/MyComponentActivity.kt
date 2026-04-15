@@ -11,6 +11,10 @@ import android.content.Intent
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import android.util.Log
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 
 class ComposeWalletActivity : ComponentActivity() {
     private var hasConnectedWallet = false
@@ -39,6 +43,25 @@ class ComposeWalletActivity : ComponentActivity() {
             val sender = ActivityResultSender(this)
             setContent {
                 signTextMessage(sender)
+            }
+        }
+        else if (myAction == 3) {
+            Log.i("godot", "[ComposeWalletActivity] onCreate | myAction=3 signAndSendTransaction — standalone scope (survives activity destruction)")
+            hasConnectedWallet = true
+            val sender = ActivityResultSender(this)
+            // Launch in standalone scope — NOT tied to activity lifecycle.
+            // The transparent activity gets destroyed by Android after ~19s when
+            // Phantom opens. LaunchedEffect dies with it. This scope survives.
+            CoroutineScope(Dispatchers.Main + SupervisorJob()).launch {
+                signAndSendTransactionAsync(sender, this@ComposeWalletActivity)
+            }
+        }
+        else if (myAction == 4) {
+            Log.i("godot", "[ComposeWalletActivity] onCreate | myAction=4 connectWalletSiws")
+            hasConnectedWallet = true
+            val sender = ActivityResultSender(this)
+            setContent {
+                connectWalletSiws(sender)
             }
         }
     }

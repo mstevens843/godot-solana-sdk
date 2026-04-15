@@ -11,6 +11,17 @@ import plugin.walletadapterandroid.myConnectCluster
 import plugin.walletadapterandroid.myIdentityName
 import plugin.walletadapterandroid.myIdentityUri
 import plugin.walletadapterandroid.myIconUri
+import plugin.walletadapterandroid.mySignAndSendSignature
+import plugin.walletadapterandroid.mySignAndSendStatus
+import plugin.walletadapterandroid.mySiwsDomain
+import plugin.walletadapterandroid.mySiwsStatement
+import plugin.walletadapterandroid.mySiwsSignature
+import plugin.walletadapterandroid.mySiwsSignedMessage
+import plugin.walletadapterandroid.mySiwsPublicKey
+import plugin.walletadapterandroid.mySiwsAccountLabel
+import plugin.walletadapterandroid.mySiwsAccountChains
+import plugin.walletadapterandroid.mySiwsAccountFeatures
+import plugin.walletadapterandroid.mySiwsStatus
 import com.solana.mobilewalletadapter.clientlib.protocol.MobileWalletAdapterClient.AuthorizationResult
 
 import android.util.Log
@@ -127,8 +138,167 @@ class GDExtensionAndroidPlugin(godot: Godot): GodotPlugin(godot) {
 
     @UsedByGodot
     fun clearState() {
-        Log.i("godot", "[KotlinPlugin] clearState | clearing myResult (was ${myResult?.javaClass?.simpleName}) — keeping myConnectedKey/authToken for signing")
+        Log.i("godot", "[KotlinPlugin] clearState | clearing myResult (was ${myResult?.javaClass?.simpleName}) signAndSendStatus=$mySignAndSendStatus siwsStatus=$mySiwsStatus — keeping myConnectedKey/authToken for signing")
         myResult = null
         myMessageSigningStatus = 0
+        mySignAndSendSignature = null
+        mySignAndSendStatus = 0
+        mySiwsSignature = null
+        mySiwsSignedMessage = null
+        mySiwsPublicKey = null
+        mySiwsAccountLabel = null
+        mySiwsAccountChains = ""
+        mySiwsAccountFeatures = ""
+        mySiwsStatus = 0
+    }
+
+    // ─── SIGN AND SEND TRANSACTIONS (MWA 2.0) ─────────────────────────────────
+
+    @UsedByGodot
+    fun signAndSendTransaction(serializedTransaction: ByteArray) {
+        Log.i("godot", "[KotlinPlugin] signAndSendTransaction | ENTRY tx_size=${serializedTransaction.size} tx_hex=${serializedTransaction.joinToString("") { "%02x".format(it) }.take(80)} authToken_len=${authToken?.length ?: 0}")
+        myAction = 3
+        myStoredTransaction = serializedTransaction
+        mySignAndSendSignature = null
+        mySignAndSendStatus = 0
+        godot.getActivity()?.let {
+            Log.i("godot", "[KotlinPlugin] signAndSendTransaction | starting ComposeWalletActivity myAction=3")
+            val intent = Intent(it, ComposeWalletActivity::class.java)
+            it.startActivity(intent)
+        } ?: Log.i("godot", "[KotlinPlugin] signAndSendTransaction | FAIL godot.getActivity() returned null")
+    }
+
+    @UsedByGodot
+    fun getSignAndSendStatus(): Int {
+        return mySignAndSendStatus
+    }
+
+    @UsedByGodot
+    fun getSignAndSendResult(): ByteArray {
+        val sig = mySignAndSendSignature ?: ByteArray(0)
+        Log.i("godot", "[KotlinPlugin] getSignAndSendResult | sig_size=${sig.size} sig_hex=${sig.joinToString("") { "%02x".format(it) }.take(40)}")
+        return sig
+    }
+
+    // ─── AUTHORIZE MWA 2.0 SIWS ───────────────────────────────────────────────
+
+    @UsedByGodot
+    fun connectWalletSiws(cluster: Int, uri: String, icon: String, name: String, domain: String, statement: String) {
+        Log.i("godot", "[KotlinPlugin] connectWalletSiws | ENTRY cluster=$cluster uri=$uri icon=$icon name=$name domain=$domain statement=$statement")
+        myConnectCluster = cluster
+        myIdentityUri = Uri.parse(uri)
+        myIconUri = Uri.parse(icon)
+        myIdentityName = name
+        mySiwsDomain = domain
+        mySiwsStatement = statement
+        myAction = 4
+        // Reset all SIWS state
+        mySiwsSignature = null
+        mySiwsSignedMessage = null
+        mySiwsPublicKey = null
+        mySiwsAccountLabel = null
+        mySiwsAccountChains = ""
+        mySiwsAccountFeatures = ""
+        mySiwsStatus = 0
+        godot.getActivity()?.let {
+            Log.i("godot", "[KotlinPlugin] connectWalletSiws | starting ComposeWalletActivity myAction=4")
+            val intent = Intent(it, ComposeWalletActivity::class.java)
+            it.startActivity(intent)
+        } ?: Log.i("godot", "[KotlinPlugin] connectWalletSiws | FAIL godot.getActivity() returned null")
+    }
+
+    @UsedByGodot
+    fun getSiwsStatus(): Int {
+        return mySiwsStatus
+    }
+
+    @UsedByGodot
+    fun getSiwsSignature(): ByteArray {
+        val sig = mySiwsSignature ?: ByteArray(0)
+        Log.i("godot", "[KotlinPlugin] getSiwsSignature | sig_size=${sig.size} sig_hex=${sig.joinToString("") { "%02x".format(it) }.take(40)}")
+        return sig
+    }
+
+    @UsedByGodot
+    fun getSiwsSignedMessage(): ByteArray {
+        val msg = mySiwsSignedMessage ?: ByteArray(0)
+        Log.i("godot", "[KotlinPlugin] getSiwsSignedMessage | msg_size=${msg.size} msg_hex=${msg.joinToString("") { "%02x".format(it) }.take(80)}")
+        return msg
+    }
+
+    @UsedByGodot
+    fun getSiwsPublicKey(): ByteArray {
+        val pk = mySiwsPublicKey ?: ByteArray(0)
+        Log.i("godot", "[KotlinPlugin] getSiwsPublicKey | pk_size=${pk.size} pk_hex=${pk.joinToString("") { "%02x".format(it) }}")
+        return pk
+    }
+
+    @UsedByGodot
+    fun getSiwsAccountLabel(): String {
+        val label = mySiwsAccountLabel ?: ""
+        Log.i("godot", "[KotlinPlugin] getSiwsAccountLabel | label=$label")
+        return label
+    }
+
+    @UsedByGodot
+    fun getSiwsAccountChains(): String {
+        Log.i("godot", "[KotlinPlugin] getSiwsAccountChains | chains=$mySiwsAccountChains")
+        return mySiwsAccountChains
+    }
+
+    @UsedByGodot
+    fun getSiwsAccountFeatures(): String {
+        Log.i("godot", "[KotlinPlugin] getSiwsAccountFeatures | features=$mySiwsAccountFeatures")
+        return mySiwsAccountFeatures
+    }
+
+    // ─── PUBKEY HELPERS ──────────────────────────────────────────────────────
+
+    @UsedByGodot
+    fun getConnectedKeyBase58(): String {
+        val key = myConnectedKey
+        if (key == null || key.isEmpty()) {
+            Log.i("godot", "[KotlinPlugin] getConnectedKeyBase58 | key_null=${key == null} key_size=${key?.size ?: 0} returning empty")
+            return ""
+        }
+        val b58 = base58Encode(key)
+        Log.i("godot", "[KotlinPlugin] getConnectedKeyBase58 | key_size=${key.size} key_hex=${key.joinToString("") { "%02x".format(it) }} base58=$b58")
+        return b58
+    }
+
+    private fun base58Encode(input: ByteArray): String {
+        val ALPHABET = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
+        if (input.isEmpty()) return ""
+        var zeros = 0
+        for (b in input) { if (b.toInt() == 0) zeros++ else break }
+        var value = java.math.BigInteger(1, input)
+        val sb = StringBuilder()
+        val fifty8 = java.math.BigInteger.valueOf(58)
+        while (value > java.math.BigInteger.ZERO) {
+            val divrem = value.divideAndRemainder(fifty8)
+            value = divrem[0]
+            sb.append(ALPHABET[divrem[1].toInt()])
+        }
+        repeat(zeros) { sb.append('1') }
+        return sb.reverse().toString()
+    }
+
+    // ─── GET CAPABILITIES (STUB) ──────────────────────────────────────────────
+
+    @UsedByGodot
+    fun getCapabilitiesWallet() {
+        Log.i("godot", "[KotlinPlugin] getCapabilitiesWallet | STUB — not implemented on this branch")
+    }
+
+    @UsedByGodot
+    fun getCapabilitiesStatus(): Int {
+        Log.i("godot", "[KotlinPlugin] getCapabilitiesStatus | STUB — returning 2 (error)")
+        return 2
+    }
+
+    @UsedByGodot
+    fun getCapabilitiesResult(): String {
+        Log.i("godot", "[KotlinPlugin] getCapabilitiesResult | STUB — returning empty")
+        return ""
     }
 }
