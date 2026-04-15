@@ -56,6 +56,8 @@ var mySiwsStatus: Int = 0   // 0=pending, 1=success, 2=failure
 fun connectWallet(sender: ActivityResultSender) {
     val activity = LocalContext.current as? Activity
     LaunchedEffect(Unit) {
+        Log.i("godot", "[connectWallet] ENTRY | cluster=$myConnectCluster identityName=$myIdentityName identityUri=$myIdentityUri authToken_len=${authToken?.length ?: 0}")
+
         val connectionIdentity = ConnectionIdentity(
             identityUri = myIdentityUri,
             iconUri = myIconUri,
@@ -71,21 +73,24 @@ fun connectWallet(sender: ActivityResultSender) {
         }
         val result = walletAdapter.connect(sender)
 
+        Log.i("godot", "[connectWallet] POST_CONNECT | result_class=${result.javaClass.simpleName}")
+
         when (result) {
             is TransactionResult.Success -> {
-                // On success, an `AuthorizationResult` type is returned.
                 authToken = result.authResult.authToken
                 myConnectedKey = result.authResult.publicKey
+                Log.i("godot", "[connectWallet] SUCCESS | authToken_len=${result.authResult.authToken.length} pubkey_size=${result.authResult.publicKey?.size ?: 0} pubkey_hex=${result.authResult.publicKey?.joinToString("") { "%02x".format(it) } ?: "null"}")
             }
             is TransactionResult.NoWalletFound -> {
-                println("No MWA compatible wallet app found on device.")
+                Log.i("godot", "[connectWallet] NO_WALLET_FOUND")
             }
             is TransactionResult.Failure -> {
-                println("Error connecting to wallet: " + result.e.message)
+                Log.i("godot", "[connectWallet] FAILURE | error=${result.e.message} error_class=${result.e.javaClass.simpleName}")
             }
         }
 
         myResult = result
+        Log.i("godot", "[connectWallet] EXIT | result_class=${result.javaClass.simpleName}")
         activity?.finish()
     }
 }
@@ -94,6 +99,7 @@ fun connectWallet(sender: ActivityResultSender) {
 fun signTransaction(sender: ActivityResultSender) {
     val activity = LocalContext.current as? Activity
     LaunchedEffect(Unit) {
+        Log.i("godot", "[signTransaction] ENTRY | tx_size=${myStoredTransaction?.size ?: 0} authToken_len=${authToken?.length ?: 0} cluster=$myConnectCluster")
 
         val connectionIdentity = ConnectionIdentity(
             identityUri = myIdentityUri,
@@ -117,6 +123,8 @@ fun signTransaction(sender: ActivityResultSender) {
             signTransactions(arrayOf(myStoredTransaction ?: ByteArray(0)))
         }
 
+        Log.i("godot", "[signTransaction] POST_TRANSACT | result_class=${result.javaClass.simpleName}")
+
         when (result) {
             is TransactionResult.Success -> {
                 authToken = result.authResult.authToken
@@ -124,20 +132,25 @@ fun signTransaction(sender: ActivityResultSender) {
                 signedTxBytes?.let {
                     myMessageSignature = signedTxBytes
                     myMessageSigningStatus = 1
-                    println("Signed memo transaction:")
+                    Log.i("godot", "[signTransaction] SUCCESS | authToken_len=${result.authResult.authToken.length} signedTx_size=${signedTxBytes.size} signedTx_hex=${signedTxBytes.joinToString("") { "%02x".format(it) }.take(80)}")
+                }
+                if (signedTxBytes == null) {
+                    myMessageSigningStatus = 2
+                    Log.i("godot", "[signTransaction] SUCCESS_BUT_NO_PAYLOAD | signedPayloads_null=${result.successPayload?.signedPayloads == null}")
                 }
             }
             is TransactionResult.NoWalletFound -> {
                 myMessageSigningStatus = 2
-                println("No MWA compatible wallet app found on device.")
+                Log.i("godot", "[signTransaction] NO_WALLET_FOUND")
             }
             is TransactionResult.Failure -> {
                 myMessageSigningStatus = 2
-                println("Error during transaction signing: " + result.e.message)
+                Log.i("godot", "[signTransaction] FAILURE | error=${result.e.message} error_class=${result.e.javaClass.simpleName}")
             }
         }
 
         myResult = result
+        Log.i("godot", "[signTransaction] EXIT | status=$myMessageSigningStatus")
         activity?.finish()
     }
 }
@@ -146,6 +159,7 @@ fun signTransaction(sender: ActivityResultSender) {
 fun signTextMessage(sender: ActivityResultSender) {
     val activity = LocalContext.current as? Activity
     LaunchedEffect(Unit) {
+        Log.i("godot", "[signTextMessage] ENTRY | message_len=${myStoredTextMessage.length} authToken_len=${authToken?.length ?: 0} connectedKey_size=${myConnectedKey?.size ?: 0} cluster=$myConnectCluster")
 
         val connectionIdentity = ConnectionIdentity(
             identityUri = myIdentityUri,
@@ -167,14 +181,15 @@ fun signTextMessage(sender: ActivityResultSender) {
 
         if(myConnectedKey == null){
             myMessageSigningStatus = 2
-            println("No connected key available for signing.")
+            Log.i("godot", "[signTextMessage] FAIL | connectedKey is null — cannot sign without a connected wallet")
             activity?.finish()
             return@LaunchedEffect
-
         }
         val result = walletAdapter.transact(sender){
             signMessagesDetached(arrayOf(myStoredTextMessage.toByteArray()), arrayOf(myConnectedKey!!))
         }
+
+        Log.i("godot", "[signTextMessage] POST_TRANSACT | result_class=${result.javaClass.simpleName}")
 
         when (result) {
             is TransactionResult.Success -> {
@@ -183,19 +198,25 @@ fun signTextMessage(sender: ActivityResultSender) {
                 signedMessageBytes?.let {
                     myMessageSignature = signedMessageBytes
                     myMessageSigningStatus = 1
+                    Log.i("godot", "[signTextMessage] SUCCESS | authToken_len=${result.authResult.authToken.length} sig_size=${signedMessageBytes.size} sig_hex=${signedMessageBytes.joinToString("") { "%02x".format(it) }.take(80)}")
+                }
+                if (signedMessageBytes == null) {
+                    myMessageSigningStatus = 2
+                    Log.i("godot", "[signTextMessage] SUCCESS_BUT_NO_SIG | messages_null=${result.successPayload?.messages == null}")
                 }
             }
             is TransactionResult.NoWalletFound -> {
                 myMessageSigningStatus = 2
-                println("No MWA compatible wallet app found on device.")
+                Log.i("godot", "[signTextMessage] NO_WALLET_FOUND")
             }
             is TransactionResult.Failure -> {
                 myMessageSigningStatus = 2
-                println("Error during message signing: " + result.e.message)
+                Log.i("godot", "[signTextMessage] FAILURE | error=${result.e.message} error_class=${result.e.javaClass.simpleName}")
             }
         }
 
         myResult = result
+        Log.i("godot", "[signTextMessage] EXIT | status=$myMessageSigningStatus")
         activity?.finish()
     }
 }

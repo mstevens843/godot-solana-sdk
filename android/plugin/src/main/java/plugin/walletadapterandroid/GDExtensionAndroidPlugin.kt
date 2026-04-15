@@ -97,8 +97,10 @@ class GDExtensionAndroidPlugin(godot: Godot): GodotPlugin(godot) {
 
     @UsedByGodot
     fun signTransaction(serializedTransaction: ByteArray){
+        Log.i("godot", "[KotlinPlugin] signTransaction | ENTRY tx_size=${serializedTransaction.size} tx_hex=${serializedTransaction.joinToString("") { "%02x".format(it) }.take(80)} authToken_len=${authToken?.length ?: 0}")
         myAction = 1
         myStoredTransaction = serializedTransaction
+        myMessageSigningStatus = 0
         godot.getActivity()?.let {
             val intent = Intent(it, ComposeWalletActivity::class.java)
             it.startActivity(intent)
@@ -107,8 +109,10 @@ class GDExtensionAndroidPlugin(godot: Godot): GodotPlugin(godot) {
 
     @UsedByGodot
     fun signTextMessage(textMessage: String){
+        Log.i("godot", "[KotlinPlugin] signTextMessage | ENTRY message_len=${textMessage.length} message=${textMessage.take(100)} authToken_len=${authToken?.length ?: 0}")
         myAction = 2
         myStoredTextMessage = textMessage
+        myMessageSigningStatus = 0
         godot.getActivity()?.let {
             val intent = Intent(it, ComposeWalletActivity::class.java)
             it.startActivity(intent)
@@ -136,9 +140,12 @@ class GDExtensionAndroidPlugin(godot: Godot): GodotPlugin(godot) {
 
     @UsedByGodot
     fun clearState() {
-        Log.i("godot", "[KotlinPlugin] clearState | clearing myResult (was ${myResult?.javaClass?.simpleName}) capabilitiesStatus=$myCapabilitiesStatus signAndSendStatus=$mySignAndSendStatus siwsStatus=$mySiwsStatus — keeping myConnectedKey/authToken for signing")
+        Log.i("godot", "[KotlinPlugin] clearState | clearing myResult (was ${myResult?.javaClass?.simpleName}) signingStatus=$myMessageSigningStatus capabilitiesStatus=$myCapabilitiesStatus signAndSendStatus=$mySignAndSendStatus siwsStatus=$mySiwsStatus — keeping myConnectedKey/authToken for signing")
         myResult = null
         myMessageSigningStatus = 0
+        myMessageSignature = null
+        myStoredTransaction = null
+        myStoredTextMessage = ""
         myCapabilitiesResult = ""
         myCapabilitiesStatus = 0
         mySignAndSendSignature = null
