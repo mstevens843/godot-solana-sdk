@@ -11,6 +11,9 @@ import plugin.walletadapterandroid.myConnectCluster
 import plugin.walletadapterandroid.myIdentityName
 import plugin.walletadapterandroid.myIdentityUri
 import plugin.walletadapterandroid.myIconUri
+import plugin.walletadapterandroid.mySignAndSendSignature
+import plugin.walletadapterandroid.mySignAndSendStatus
+import plugin.walletadapterandroid.authToken
 import com.solana.mobilewalletadapter.clientlib.protocol.MobileWalletAdapterClient.AuthorizationResult
 
 import android.util.Log
@@ -117,7 +120,43 @@ class GDExtensionAndroidPlugin(godot: Godot): GodotPlugin(godot) {
     }
 
     @UsedByGodot
+    fun setIdentity(cluster: Int, uri: String, icon: String, name: String) {
+        myConnectCluster = cluster
+        myIdentityUri = Uri.parse(uri)
+        myIconUri = Uri.parse(icon)
+        myIdentityName = name
+    }
+
+    @UsedByGodot
     fun clearState() {
+        myResult = null
         myMessageSigningStatus = 0
+        mySignAndSendSignature = null
+        mySignAndSendStatus = 0
+    }
+
+    // ─── MWA 2.0: signAndSendTransactions ─────────────────────────────────────
+
+    @UsedByGodot
+    fun signAndSendTransaction(serializedTransaction: ByteArray) {
+        Log.i("godot", "[KotlinPlugin] signAndSendTransaction | tx_size=${serializedTransaction.size} authToken_len=${authToken?.length ?: 0}")
+        myAction = 3
+        myStoredTransaction = serializedTransaction
+        mySignAndSendSignature = null
+        mySignAndSendStatus = 0
+        godot.getActivity()?.let {
+            val intent = Intent(it, ComposeWalletActivity::class.java)
+            it.startActivity(intent)
+        }
+    }
+
+    @UsedByGodot
+    fun getSignAndSendStatus(): Int {
+        return mySignAndSendStatus
+    }
+
+    @UsedByGodot
+    fun getSignAndSendResult(): ByteArray {
+        return mySignAndSendSignature ?: ByteArray(0)
     }
 }

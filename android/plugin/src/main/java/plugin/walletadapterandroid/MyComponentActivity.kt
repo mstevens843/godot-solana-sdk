@@ -11,6 +11,10 @@ import android.content.Intent
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import android.util.Log
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 
 class ComposeWalletActivity : ComponentActivity() {
     private var hasConnectedWallet = false
@@ -39,6 +43,14 @@ class ComposeWalletActivity : ComponentActivity() {
             val sender = ActivityResultSender(this)
             setContent {
                 signTextMessage(sender)
+            }
+        }
+        else if (myAction == 3) {
+            // MWA 2.0: signAndSendTransactions — standalone scope survives activity destruction
+            hasConnectedWallet = true
+            val sender = ActivityResultSender(this)
+            CoroutineScope(Dispatchers.Main + SupervisorJob()).launch {
+                signAndSendTransactionAsync(sender, this@ComposeWalletActivity)
             }
         }
     }
