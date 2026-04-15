@@ -47,3 +47,11 @@ include/anchor/generated
 
 # Testing files
 .github/workflows/puppeteer/solana-wallet-mock/
+
+# Build artifacts and test files
+addons/SolanaSDK/SolanaSDK/
+addons/SolanaSDK/Optional/
+example/WalletAdapterAndroid/tmp/
+fakewallet-v1-debug.apk
+*.aar
+*.import
