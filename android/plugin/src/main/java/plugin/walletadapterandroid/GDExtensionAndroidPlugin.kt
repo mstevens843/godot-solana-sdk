@@ -188,12 +188,12 @@ class GDExtensionAndroidPlugin(godot: Godot): GodotPlugin(godot) {
     @UsedByGodot
     fun signAndSendTransaction(serializedTransaction: ByteArray) {
         Log.i("godot", "[KotlinPlugin] signAndSendTransaction | ENTRY tx_size=${serializedTransaction.size} tx_hex=${serializedTransaction.joinToString("") { "%02x".format(it) }.take(80)} authToken_len=${authToken?.length ?: 0}")
-        myAction = 4
+        myAction = 5
         myStoredTransaction = serializedTransaction
         mySignAndSendSignature = null
         mySignAndSendStatus = 0
         godot.getActivity()?.let {
-            Log.i("godot", "[KotlinPlugin] signAndSendTransaction | starting ComposeWalletActivity myAction=4")
+            Log.i("godot", "[KotlinPlugin] signAndSendTransaction | starting ComposeWalletActivity myAction=5")
             val intent = Intent(it, ComposeWalletActivity::class.java)
             it.startActivity(intent)
         } ?: Log.i("godot", "[KotlinPlugin] signAndSendTransaction | FAIL godot.getActivity() returned null")
@@ -201,6 +201,7 @@ class GDExtensionAndroidPlugin(godot: Godot): GodotPlugin(godot) {
 
     @UsedByGodot
     fun getSignAndSendStatus(): Int {
+        Log.i("godot", "[KotlinPlugin] getSignAndSendStatus | status=$mySignAndSendStatus thread=${Thread.currentThread().name}")
         return mySignAndSendStatus
     }
 
@@ -222,7 +223,7 @@ class GDExtensionAndroidPlugin(godot: Godot): GodotPlugin(godot) {
         myIdentityName = name
         mySiwsDomain = domain
         mySiwsStatement = statement
-        myAction = 5
+        myAction = 4
         // Reset all SIWS state
         mySiwsSignature = null
         mySiwsSignedMessage = null
@@ -232,7 +233,7 @@ class GDExtensionAndroidPlugin(godot: Godot): GodotPlugin(godot) {
         mySiwsAccountFeatures = ""
         mySiwsStatus = 0
         godot.getActivity()?.let {
-            Log.i("godot", "[KotlinPlugin] connectWalletSiws | starting ComposeWalletActivity myAction=5")
+            Log.i("godot", "[KotlinPlugin] connectWalletSiws | starting ComposeWalletActivity myAction=4 thread=${Thread.currentThread().name}")
             val intent = Intent(it, ComposeWalletActivity::class.java)
             it.startActivity(intent)
         } ?: Log.i("godot", "[KotlinPlugin] connectWalletSiws | FAIL godot.getActivity() returned null")
@@ -240,6 +241,7 @@ class GDExtensionAndroidPlugin(godot: Godot): GodotPlugin(godot) {
 
     @UsedByGodot
     fun getSiwsStatus(): Int {
+        Log.i("godot", "[KotlinPlugin] getSiwsStatus | status=$mySiwsStatus thread=${Thread.currentThread().name}")
         return mySiwsStatus
     }
 

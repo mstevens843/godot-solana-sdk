@@ -302,7 +302,8 @@ fun getWalletCapabilities(sender: ActivityResultSender) {
 // The MWA WebSocket session continues independently — we just need the coroutine alive
 // to receive the result.
 suspend fun signAndSendTransactionAsync(sender: ActivityResultSender, activity: Activity?) {
-    Log.i("godot", "[signAndSendTransaction] ENTRY | tx_size=${myStoredTransaction?.size ?: 0} tx_hex=${myStoredTransaction?.joinToString("") { "%02x".format(it) }?.take(80) ?: "null"} authToken_len=${authToken?.length ?: 0} cluster=$myConnectCluster identityName=$myIdentityName identityUri=$myIdentityUri scope=standalone")
+    val startTime = System.currentTimeMillis()
+    Log.i("godot", "[signAndSendTransaction] ENTRY | elapsed=0ms thread=${Thread.currentThread().name} tx_size=${myStoredTransaction?.size ?: 0} tx_hex=${myStoredTransaction?.joinToString("") { "%02x".format(it) }?.take(80) ?: "null"} authToken_len=${authToken?.length ?: 0} cluster=$myConnectCluster identityName=$myIdentityName identityUri=$myIdentityUri scope=standalone activity_isDestroyed=${activity?.isDestroyed}")
 
     val connectionIdentity = ConnectionIdentity(
         identityUri = myIdentityUri,
@@ -322,19 +323,20 @@ suspend fun signAndSendTransactionAsync(sender: ActivityResultSender, activity: 
         walletAdapter.authToken = authToken
     }
 
-    Log.i("godot", "[signAndSendTransaction] PRE_TRANSACT | blockchain=${walletAdapter.blockchain} authToken_set=${walletAdapter.authToken != null} authToken_len=${walletAdapter.authToken?.length ?: 0}")
+    Log.i("godot", "[signAndSendTransaction] PRE_TRANSACT | elapsed=${System.currentTimeMillis() - startTime}ms thread=${Thread.currentThread().name} blockchain=${walletAdapter.blockchain} authToken_set=${walletAdapter.authToken != null} authToken_len=${walletAdapter.authToken?.length ?: 0}")
 
     try {
         val txPayload = myStoredTransaction ?: ByteArray(0)
         val txPayloadBase64 = android.util.Base64.encodeToString(txPayload, android.util.Base64.NO_WRAP)
-        Log.i("godot", "[signAndSendTransaction] TX_PAYLOAD | size=${txPayload.size} base64_len=${txPayloadBase64.length} base64=${txPayloadBase64.take(120)}")
+        Log.i("godot", "[signAndSendTransaction] TX_PAYLOAD | elapsed=${System.currentTimeMillis() - startTime}ms size=${txPayload.size} base64_len=${txPayloadBase64.length} base64=${txPayloadBase64.take(120)}")
         Log.i("godot", "[signAndSendTransaction] TX_PAYLOAD_HEX | full_hex=${txPayload.joinToString("") { "%02x".format(it) }}")
+        Log.i("godot", "[signAndSendTransaction] CALLING_TRANSACT | elapsed=${System.currentTimeMillis() - startTime}ms thread=${Thread.currentThread().name} activity_isDestroyed=${activity?.isDestroyed}")
 
         val result = walletAdapter.transact(sender) {
-            Log.i("godot", "[signAndSendTransaction] INSIDE_TRANSACT | session_established calling signAndSendTransactions tx_size=${txPayload.size} skipPreflight=true commitment=confirmed")
+            Log.i("godot", "[signAndSendTransaction] INSIDE_TRANSACT | elapsed=${System.currentTimeMillis() - startTime}ms thread=${Thread.currentThread().name} session_established calling signAndSendTransactions tx_size=${txPayload.size} skipPreflight=true commitment=confirmed activity_isDestroyed=${activity?.isDestroyed}")
             try {
                 val signAndSendResult = signAndSendTransactions(arrayOf(txPayload), TransactionParams(null, "confirmed", true, null, null))
-                Log.i("godot", "[signAndSendTransaction] SIGN_AND_SEND_RETURNED | result_class=${signAndSendResult.javaClass.simpleName} result=$signAndSendResult")
+                Log.i("godot", "[signAndSendTransaction] SIGN_AND_SEND_RETURNED | elapsed=${System.currentTimeMillis() - startTime}ms thread=${Thread.currentThread().name} result_class=${signAndSendResult.javaClass.simpleName}")
                 Log.i("godot", "[signAndSendTransaction] SIGN_AND_SEND_RETURNED | signatures_null=${signAndSendResult.signatures == null} sig_count=${signAndSendResult.signatures?.size ?: 0}")
                 if (signAndSendResult.signatures != null) {
                     for ((idx, sig) in signAndSendResult.signatures.withIndex()) {
@@ -343,22 +345,22 @@ suspend fun signAndSendTransactionAsync(sender: ActivityResultSender, activity: 
                 }
                 signAndSendResult
             } catch (innerEx: Exception) {
-                Log.i("godot", "[signAndSendTransaction] INSIDE_TRANSACT_EXCEPTION | error=${innerEx.message} class=${innerEx.javaClass.simpleName} stack=${innerEx.stackTraceToString().take(500)}")
+                Log.i("godot", "[signAndSendTransaction] INSIDE_TRANSACT_EXCEPTION | elapsed=${System.currentTimeMillis() - startTime}ms thread=${Thread.currentThread().name} error=${innerEx.message} class=${innerEx.javaClass.simpleName}")
+                Log.i("godot", "[signAndSendTransaction] INSIDE_TRANSACT_EXCEPTION_STACK | ${innerEx.stackTraceToString()}")
                 throw innerEx
             }
         }
 
-        Log.i("godot", "[signAndSendTransaction] POST_TRANSACT | result_class=${result.javaClass.simpleName}")
+        Log.i("godot", "[signAndSendTransaction] POST_TRANSACT | elapsed=${System.currentTimeMillis() - startTime}ms thread=${Thread.currentThread().name} result_class=${result.javaClass.simpleName}")
 
         when (result) {
             is TransactionResult.Success -> {
                 authToken = result.authResult.authToken
-                Log.i("godot", "[signAndSendTransaction] SUCCESS_AUTH | authToken_len=${result.authResult.authToken.length} pubkey_size=${result.authResult.publicKey?.size ?: 0}")
+                Log.i("godot", "[signAndSendTransaction] SUCCESS_AUTH | elapsed=${System.currentTimeMillis() - startTime}ms authToken_len=${result.authResult.authToken.length} pubkey_size=${result.authResult.publicKey?.size ?: 0}")
                 val payload = result.successPayload
-                Log.i("godot", "[signAndSendTransaction] SUCCESS_PAYLOAD | payload_null=${payload == null} payload_class=${payload?.javaClass?.simpleName ?: "null"}")
                 val signatures = payload?.signatures
                 val firstSig = signatures?.firstOrNull()
-                Log.i("godot", "[signAndSendTransaction] SUCCESS | sig_count=${signatures?.size ?: 0} first_sig_size=${firstSig?.size ?: 0} first_sig_hex=${firstSig?.joinToString("") { "%02x".format(it) } ?: "null"}")
+                Log.i("godot", "[signAndSendTransaction] SUCCESS | elapsed=${System.currentTimeMillis() - startTime}ms sig_count=${signatures?.size ?: 0} first_sig_size=${firstSig?.size ?: 0} first_sig_hex=${firstSig?.joinToString("") { "%02x".format(it) } ?: "null"}")
                 firstSig?.let {
                     mySignAndSendSignature = it
                     mySignAndSendStatus = 1
@@ -369,21 +371,24 @@ suspend fun signAndSendTransactionAsync(sender: ActivityResultSender, activity: 
                 }
             }
             is TransactionResult.NoWalletFound -> {
-                Log.i("godot", "[signAndSendTransaction] NO_WALLET_FOUND")
+                Log.i("godot", "[signAndSendTransaction] NO_WALLET_FOUND | elapsed=${System.currentTimeMillis() - startTime}ms")
                 mySignAndSendStatus = 2
             }
             is TransactionResult.Failure -> {
-                Log.i("godot", "[signAndSendTransaction] FAILURE | error=${result.e.message} error_class=${result.e.javaClass.simpleName} stacktrace=${result.e.stackTraceToString().take(500)}")
+                Log.i("godot", "[signAndSendTransaction] FAILURE | elapsed=${System.currentTimeMillis() - startTime}ms thread=${Thread.currentThread().name} error=${result.e.message} error_class=${result.e.javaClass.simpleName} cause=${result.e.cause?.message ?: "null"}")
+                Log.i("godot", "[signAndSendTransaction] FAILURE_STACK | ${result.e.stackTraceToString()}")
                 mySignAndSendStatus = 2
             }
         }
 
-        Log.i("godot", "[signAndSendTransaction] EXIT | status=$mySignAndSendStatus sig_size=${mySignAndSendSignature?.size ?: 0} sig_hex=${mySignAndSendSignature?.joinToString("") { "%02x".format(it) } ?: "null"}")
+        Log.i("godot", "[signAndSendTransaction] EXIT | elapsed=${System.currentTimeMillis() - startTime}ms thread=${Thread.currentThread().name} status=$mySignAndSendStatus sig_size=${mySignAndSendSignature?.size ?: 0} sig_hex=${mySignAndSendSignature?.joinToString("") { "%02x".format(it) } ?: "null"}")
         myResult = result
     } catch (e: Exception) {
-        Log.i("godot", "[signAndSendTransaction] OUTER_EXCEPTION | error=${e.message} class=${e.javaClass.simpleName} cause=${e.cause?.message ?: "null"} cause_class=${e.cause?.javaClass?.simpleName ?: "null"} stacktrace=${e.stackTraceToString().take(600)}")
+        Log.i("godot", "[signAndSendTransaction] OUTER_EXCEPTION | elapsed=${System.currentTimeMillis() - startTime}ms thread=${Thread.currentThread().name} error=${e.message} class=${e.javaClass.simpleName} cause=${e.cause?.message ?: "null"}")
+        Log.i("godot", "[signAndSendTransaction] OUTER_EXCEPTION_STACK | ${e.stackTraceToString()}")
         mySignAndSendStatus = 2
     }
+    Log.i("godot", "[signAndSendTransaction] PRE_FINISH | elapsed=${System.currentTimeMillis() - startTime}ms thread=${Thread.currentThread().name} signAndSendStatus=$mySignAndSendStatus activity_isDestroyed=${activity?.isDestroyed}")
     activity?.finish()
 }
 
@@ -393,7 +398,8 @@ suspend fun signAndSendTransactionAsync(sender: ActivityResultSender, activity: 
 fun connectWalletSiws(sender: ActivityResultSender) {
     val activity = LocalContext.current as? Activity
     LaunchedEffect(Unit) {
-        Log.i("godot", "[connectWalletSiws] ENTRY | domain=$mySiwsDomain statement=$mySiwsStatement cluster=$myConnectCluster identityName=$myIdentityName identityUri=$myIdentityUri authToken_len=${authToken?.length ?: 0}")
+        val startTime = System.currentTimeMillis()
+        Log.i("godot", "[connectWalletSiws] ENTRY | elapsed=0ms thread=${Thread.currentThread().name} domain=$mySiwsDomain statement=$mySiwsStatement cluster=$myConnectCluster identityName=$myIdentityName identityUri=$myIdentityUri authToken_len=${authToken?.length ?: 0} activity=${activity?.hashCode()} activity_isFinishing=${activity?.isFinishing} activity_isDestroyed=${activity?.isDestroyed}")
 
         val connectionIdentity = ConnectionIdentity(
             identityUri = myIdentityUri,
@@ -410,21 +416,21 @@ fun connectWalletSiws(sender: ActivityResultSender) {
         }
 
         val payload = SignInWithSolana.Payload(mySiwsDomain, mySiwsStatement)
-        Log.i("godot", "[connectWalletSiws] PRE_SIGNIN | blockchain=${walletAdapter.blockchain} payload_domain=${payload.domain} payload_statement=${payload.statement}")
+        Log.i("godot", "[connectWalletSiws] PRE_SIGNIN | elapsed=${System.currentTimeMillis() - startTime}ms thread=${Thread.currentThread().name} blockchain=${walletAdapter.blockchain} payload_domain=${payload.domain} payload_statement=${payload.statement}")
+        Log.i("godot", "[connectWalletSiws] CALLING_SIGNIN | elapsed=${System.currentTimeMillis() - startTime}ms thread=${Thread.currentThread().name} sender=${sender.hashCode()} activity_isDestroyed=${activity?.isDestroyed}")
 
         try {
             val result = walletAdapter.signIn(sender, payload)
 
-            Log.i("godot", "[connectWalletSiws] POST_SIGNIN | result_class=${result.javaClass.simpleName}")
+            Log.i("godot", "[connectWalletSiws] SIGNIN_RETURNED | elapsed=${System.currentTimeMillis() - startTime}ms thread=${Thread.currentThread().name} result_class=${result.javaClass.simpleName} activity_isDestroyed=${activity?.isDestroyed}")
 
             when (result) {
                 is TransactionResult.Success -> {
                     authToken = result.authResult.authToken
                     myConnectedKey = result.authResult.publicKey
 
-                    // SIWS data: try authResult.signInResult first, fall back to successPayload
                     val signInResult = result.authResult.signInResult ?: result.successPayload
-                    Log.i("godot", "[connectWalletSiws] SIWS_SOURCE | authResult_signInResult_null=${result.authResult.signInResult == null} successPayload_null=${result.successPayload == null} using=${if (result.authResult.signInResult != null) "authResult" else "successPayload"}")
+                    Log.i("godot", "[connectWalletSiws] SIWS_SOURCE | elapsed=${System.currentTimeMillis() - startTime}ms authResult_signInResult_null=${result.authResult.signInResult == null} successPayload_null=${result.successPayload == null} using=${if (result.authResult.signInResult != null) "authResult" else "successPayload"}")
                     mySiwsSignature = signInResult?.signature
                     mySiwsSignedMessage = signInResult?.signedMessage
                     mySiwsPublicKey = signInResult?.publicKey
@@ -436,26 +442,29 @@ fun connectWalletSiws(sender: ActivityResultSender) {
 
                     mySiwsStatus = 1
 
-                    Log.i("godot", "[connectWalletSiws] SUCCESS | authToken_len=${result.authResult.authToken.length} pubkey_size=${result.authResult.publicKey?.size ?: 0} pubkey_hex=${result.authResult.publicKey?.joinToString("") { "%02x".format(it) } ?: "null"}")
-                    Log.i("godot", "[connectWalletSiws] SUCCESS_SIWS | sig_size=${signInResult?.signature?.size ?: 0} sig_hex=${signInResult?.signature?.joinToString("") { "%02x".format(it) } ?: "null"} signedMsg_size=${signInResult?.signedMessage?.size ?: 0} signedMsg_hex=${signInResult?.signedMessage?.joinToString("") { "%02x".format(it) }?.take(80) ?: "null"}")
+                    Log.i("godot", "[connectWalletSiws] SUCCESS | elapsed=${System.currentTimeMillis() - startTime}ms thread=${Thread.currentThread().name} authToken_len=${result.authResult.authToken.length} pubkey_size=${result.authResult.publicKey?.size ?: 0} pubkey_hex=${result.authResult.publicKey?.joinToString("") { "%02x".format(it) } ?: "null"}")
+                    Log.i("godot", "[connectWalletSiws] SUCCESS_SIWS | sig_size=${signInResult?.signature?.size ?: 0} sig_hex=${signInResult?.signature?.joinToString("") { "%02x".format(it) } ?: "null"} signedMsg_size=${signInResult?.signedMessage?.size ?: 0} signedMsg_hex=${signInResult?.signedMessage?.joinToString("") { "%02x".format(it) } ?: "null"}")
                     Log.i("godot", "[connectWalletSiws] SUCCESS_ACCOUNT | label=${firstAccount?.accountLabel} chains=${firstAccount?.chains?.joinToString(",") ?: "null"} features=${firstAccount?.features?.joinToString(",") ?: "null"} account_count=${result.authResult.accounts?.size ?: 0}")
                 }
                 is TransactionResult.NoWalletFound -> {
-                    Log.i("godot", "[connectWalletSiws] NO_WALLET_FOUND")
+                    Log.i("godot", "[connectWalletSiws] NO_WALLET_FOUND | elapsed=${System.currentTimeMillis() - startTime}ms thread=${Thread.currentThread().name}")
                     mySiwsStatus = 2
                 }
                 is TransactionResult.Failure -> {
-                    Log.i("godot", "[connectWalletSiws] FAILURE | error=${result.e.message} error_class=${result.e.javaClass.simpleName} stacktrace=${result.e.stackTraceToString().take(300)}")
+                    Log.i("godot", "[connectWalletSiws] FAILURE | elapsed=${System.currentTimeMillis() - startTime}ms thread=${Thread.currentThread().name} error=${result.e.message} error_class=${result.e.javaClass.simpleName} cause=${result.e.cause?.message ?: "null"} cause_class=${result.e.cause?.javaClass?.simpleName ?: "null"}")
+                    Log.i("godot", "[connectWalletSiws] FAILURE_STACK | ${result.e.stackTraceToString()}")
                     mySiwsStatus = 2
                 }
             }
 
-            Log.i("godot", "[connectWalletSiws] EXIT | status=$mySiwsStatus connectedKey_size=${myConnectedKey?.size ?: 0} authToken_len=${authToken?.length ?: 0} siwsSig_size=${mySiwsSignature?.size ?: 0}")
+            Log.i("godot", "[connectWalletSiws] EXIT | elapsed=${System.currentTimeMillis() - startTime}ms thread=${Thread.currentThread().name} status=$mySiwsStatus connectedKey_size=${myConnectedKey?.size ?: 0} authToken_len=${authToken?.length ?: 0} siwsSig_size=${mySiwsSignature?.size ?: 0}")
             myResult = result
         } catch (e: Exception) {
-            Log.i("godot", "[connectWalletSiws] EXCEPTION | error=${e.message} class=${e.javaClass.simpleName} stacktrace=${e.stackTraceToString().take(400)}")
+            Log.i("godot", "[connectWalletSiws] EXCEPTION | elapsed=${System.currentTimeMillis() - startTime}ms thread=${Thread.currentThread().name} error=${e.message} class=${e.javaClass.simpleName} cause=${e.cause?.message ?: "null"} cause_class=${e.cause?.javaClass?.simpleName ?: "null"}")
+            Log.i("godot", "[connectWalletSiws] EXCEPTION_STACK | ${e.stackTraceToString()}")
             mySiwsStatus = 2
         }
+        Log.i("godot", "[connectWalletSiws] PRE_FINISH | elapsed=${System.currentTimeMillis() - startTime}ms thread=${Thread.currentThread().name} siwsStatus=$mySiwsStatus activity_isDestroyed=${activity?.isDestroyed}")
         activity?.finish()
     }
 }
