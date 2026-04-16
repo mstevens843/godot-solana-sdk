@@ -140,7 +140,27 @@ class GDExtensionAndroidPlugin(godot: Godot): GodotPlugin(godot) {
 
     @UsedByGodot
     fun clearState() {
-        Log.i("godot", "[KotlinPlugin] clearState | clearing myResult (was ${myResult?.javaClass?.simpleName}) signingStatus=$myMessageSigningStatus capabilitiesStatus=$myCapabilitiesStatus signAndSendStatus=$mySignAndSendStatus siwsStatus=$mySiwsStatus — keeping myConnectedKey/authToken for signing")
+        Log.i("godot", "[KotlinPlugin] clearState | clearing status flags — keeping myResult/myConnectedKey/authToken for connection reuse")
+        myMessageSigningStatus = 0
+        myMessageSignature = null
+        myStoredTransaction = null
+        myStoredTextMessage = ""
+        myCapabilitiesResult = ""
+        myCapabilitiesStatus = 0
+        mySignAndSendSignature = null
+        mySignAndSendStatus = 0
+        mySiwsSignature = null
+        mySiwsSignedMessage = null
+        mySiwsPublicKey = null
+        mySiwsAccountLabel = null
+        mySiwsAccountChains = ""
+        mySiwsAccountFeatures = ""
+        mySiwsStatus = 0
+    }
+
+    @UsedByGodot
+    fun clearStateFullReset() {
+        Log.i("godot", "[KotlinPlugin] clearStateFullReset | clearing myResult (was ${myResult?.javaClass?.simpleName}) + all status flags — next connectWallet will open fresh OS picker")
         myResult = null
         myMessageSigningStatus = 0
         myMessageSignature = null
