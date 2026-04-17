@@ -335,4 +335,15 @@ class GDExtensionAndroidPlugin(godot: Godot): GodotPlugin(godot) {
         repeat(zeros) { sb.append('1') }
         return sb.reverse().toString()
     }
+
+    @UsedByGodot
+    fun getAuthToken(): String {
+        return authToken ?: ""
+    }
+
+    @UsedByGodot
+    fun setAuthToken(token: String) {
+        authToken = if (token.isEmpty()) null else token
+        Log.i("godot", "[KotlinPlugin] setAuthToken | token_len=${authToken?.length ?: 0}")
+    }
 }
