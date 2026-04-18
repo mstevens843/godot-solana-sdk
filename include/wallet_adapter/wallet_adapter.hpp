@@ -277,6 +277,29 @@ public:
 	 */
 	void sign_text_message(const String &message);
 
+	/**
+	 * @brief Read the current MWA auth token held by the Android plugin.
+	 *
+	 * Returns an empty string on non-Android platforms, when the plugin
+	 * singleton is unavailable, or when the wallet has not yet authorized.
+	 * Useful for external auth caches that want to persist or hand the
+	 * token off across app launches without reaching into the plugin via
+	 * Engine::get_singleton() from GDScript.
+	 *
+	 * @return Auth token string, or "" when unavailable.
+	 */
+	String get_auth_token();
+
+	/**
+	 * @brief Restore a previously-cached MWA auth token into the Android plugin.
+	 *
+	 * Pass an empty string to clear the cached token. No-op on non-Android
+	 * platforms and when the plugin singleton is unavailable.
+	 *
+	 * @param token Auth token to restore, or "" to clear.
+	 */
+	void set_auth_token(const String &token);
+
 	~WalletAdapter() override = default;
 };
 

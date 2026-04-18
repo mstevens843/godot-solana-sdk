@@ -343,6 +343,8 @@ void WalletAdapter::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("connect_wallet"), &WalletAdapter::connect_wallet);
 	ClassDB::bind_method(D_METHOD("sign_message", "serialized_message", "signer_index"), &WalletAdapter::sign_message);
 	ClassDB::bind_method(D_METHOD("sign_text_message", "text_message"), &WalletAdapter::sign_text_message);
+	ClassDB::bind_method(D_METHOD("get_auth_token"), &WalletAdapter::get_auth_token);
+	ClassDB::bind_method(D_METHOD("set_auth_token", "token"), &WalletAdapter::set_auth_token);
 	ClassDB::bind_method(D_METHOD("get_connected_key"), &WalletAdapter::get_connected_key);
 	ClassDB::bind_method(D_METHOD("set_wallet_type", "wallet_type"), &WalletAdapter::set_wallet_type);
 	ClassDB::bind_method(D_METHOD("get_wallet_type"), &WalletAdapter::get_wallet_type);
@@ -534,6 +536,34 @@ void WalletAdapter::sign_text_message(const String &message) {
 
 	android_plugin.call("signTextMessage", message);
 
+#endif
+}
+
+String WalletAdapter::get_auth_token() {
+#ifdef ANDROID_ENABLED
+	Variant android_plugin = get_android_plugin();
+	if (android_plugin.get_type() == Variant::NIL) {
+		WARN_PRINT_ONCE_ED_CUSTOM("No android plugin installed");
+		return "";
+	}
+
+	return android_plugin.call("getAuthToken");
+#else
+	return "";
+#endif
+}
+
+void WalletAdapter::set_auth_token(const String &token) {
+#ifdef ANDROID_ENABLED
+	Variant android_plugin = get_android_plugin();
+	if (android_plugin.get_type() == Variant::NIL) {
+		WARN_PRINT_ONCE_ED_CUSTOM("No android plugin installed");
+		return;
+	}
+
+	android_plugin.call("setAuthToken", token);
+#else
+	(void)token;
 #endif
 }
 
